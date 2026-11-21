@@ -1,0 +1,507 @@
+-- ==========================================================
+-- PHATADR - UNIVERSAL MENU (NO-FALL NOCLIP + RED OUTLINE ESP)
+-- ==========================================================
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+if not localPlayer then
+    repeat task.wait() until Players.LocalPlayer
+    localPlayer = Players.LocalPlayer
+end
+
+local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui") or localPlayer:WaitForChild("PlayerGui", 15)
+if not playerGui then return end
+
+pcall(function()
+    local old = playerGui:FindFirstChild("PhatadrUniversalMenu")
+    if old then old:Destroy() end
+end)
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PhatadrUniversalMenu"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = playerGui
+
+-- Nút vuông nổi Phatadr (nền đen, viền đỏ sát mép vuông, chữ P tia sét đỏ)
+local floatingBtn = Instance.new("TextButton")
+floatingBtn.Name = "FloatingToggle"
+floatingBtn.Size = UDim2.new(0, 56, 0, 56)
+floatingBtn.Position = UDim2.new(0, 24, 0.3, 0)
+floatingBtn.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+floatingBtn.BorderColor3 = Color3.fromRGB(255, 35, 45)
+floatingBtn.BorderSizePixel = 2
+floatingBtn.Text = "⚡\nP"
+floatingBtn.TextColor3 = Color3.fromRGB(255, 35, 45)
+floatingBtn.TextSize = 16
+floatingBtn.Font = Enum.Font.GothamBlack
+floatingBtn.Active = true
+floatingBtn.Draggable = true
+floatingBtn.ZIndex = 10
+floatingBtn.Parent = screenGui
+
+-- Khung menu chính
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 344, 0, 276)
+mainFrame.Position = UDim2.new(0.5, -172, 0.5, -138)
+mainFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+mainFrame.BorderColor3 = Color3.fromRGB(255, 45, 45)
+mainFrame.BorderSizePixel = 2
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Visible = true
+mainFrame.ZIndex = 5
+mainFrame.Parent = screenGui
+
+floatingBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- TopBar (Nút thu nhỏ bên trái)
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 34)
+topBar.BackgroundColor3 = Color3.fromRGB(24, 22, 28)
+topBar.BorderSizePixel = 0
+topBar.ZIndex = 6
+topBar.Parent = mainFrame
+
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 24, 0, 24)
+minBtn.Position = UDim2.new(0, 7, 0.5, -12)
+minBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+minBtn.BorderSizePixel = 0
+minBtn.Text = "-"
+minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minBtn.TextSize = 15
+minBtn.Font = Enum.Font.GothamBold
+minBtn.ZIndex = 7
+minBtn.Parent = topBar
+
+minBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+end)
+
+local titleLbl = Instance.new("TextLabel")
+titleLbl.Size = UDim2.new(1, -70, 1, 0)
+titleLbl.Position = UDim2.new(0, 38, 0, 0)
+titleLbl.BackgroundTransparency = 1
+titleLbl.Text = "PHATADR | UNIVERSAL"
+titleLbl.TextColor3 = Color3.fromRGB(255, 65, 65)
+titleLbl.TextSize = 11
+titleLbl.Font = Enum.Font.GothamBold
+titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+titleLbl.ZIndex = 7
+titleLbl.Parent = topBar
+
+local espEnabled = false
+local espFolder = Instance.new("Folder")
+espFolder.Name = "PhatadrRedEspFolder"
+espFolder.Parent = screenGui
+
+local activeHighlights = {}
+
+local function clearAllEsp()
+    for plr, hl in pairs(activeHighlights) do
+        pcall(function()
+            if hl then hl:Destroy() end
+        end)
+        activeHighlights[plr] = nil
+    end
+    for _, obj in ipairs(espFolder:GetChildren()) do
+        pcall(function()
+            obj:Destroy()
+        end)
+    end
+end
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 24, 0, 24)
+closeBtn.Position = UDim2.new(1, -31, 0.5, -12)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 11
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.ZIndex = 7
+closeBtn.Parent = topBar
+
+closeBtn.MouseButton1Click:Connect(function()
+    espEnabled = false
+    clearAllEsp()
+    screenGui:Destroy()
+end)
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -16, 1, -42)
+scroll.Position = UDim2.new(0, 8, 0, 38)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.CanvasSize = UDim2.new(0, 0, 0, 260)
+scroll.ScrollBarThickness = 4
+scroll.ZIndex = 6
+scroll.Parent = mainFrame
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 6)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = scroll
+
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 14)
+end)
+
+local cachedChar = localPlayer.Character
+local cachedHum = cachedChar and cachedChar:FindFirstChildOfClass("Humanoid")
+local cachedRoot = cachedChar and cachedChar:FindFirstChild("HumanoidRootPart")
+local cachedParts = {}
+local cachedDecals = {}
+
+local function refreshCharCache(char)
+    cachedChar = char
+    cachedHum = char and char:FindFirstChildOfClass("Humanoid")
+    cachedRoot = char and char:FindFirstChild("HumanoidRootPart")
+    table.clear(cachedParts)
+    table.clear(cachedDecals)
+    if not char then return end
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            table.insert(cachedParts, obj)
+        elseif obj:IsA("Decal") then
+            table.insert(cachedDecals, obj)
+        end
+    end
+end
+
+if cachedChar then
+    refreshCharCache(cachedChar)
+end
+
+localPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.2)
+    refreshCharCache(char)
+end)
+
+local function getCharNow()
+    if cachedChar and cachedChar.Parent and cachedHum and cachedHum.Parent and cachedRoot and cachedRoot.Parent then
+        return cachedChar, cachedHum, cachedRoot
+    end
+    local char = localPlayer.Character
+    if char then
+        refreshCharCache(char)
+    end
+    return cachedChar, cachedHum, cachedRoot
+end
+
+-- 1. WALKSPEED NHẬP SỐ
+local customWalkSpeed = 28
+local walkSpeedActive = false
+
+local speedRow = Instance.new("Frame")
+speedRow.LayoutOrder = 1
+speedRow.Size = UDim2.new(1, 0, 0, 42)
+speedRow.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+speedRow.BorderSizePixel = 0
+speedRow.ZIndex = 7
+speedRow.Parent = scroll
+
+local spLbl = Instance.new("TextLabel")
+spLbl.Size = UDim2.new(0.42, 0, 1, 0)
+spLbl.Position = UDim2.new(0, 10, 0, 0)
+spLbl.BackgroundTransparency = 1
+spLbl.Text = "WalkSpeed"
+spLbl.TextColor3 = Color3.fromRGB(235, 235, 245)
+spLbl.TextSize = 11
+spLbl.Font = Enum.Font.GothamBold
+spLbl.TextXAlignment = Enum.TextXAlignment.Left
+spLbl.ZIndex = 8
+spLbl.Parent = speedRow
+
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.new(0, 68, 0, 26)
+speedBox.Position = UDim2.new(1, -124, 0.5, -13)
+speedBox.BackgroundColor3 = Color3.fromRGB(36, 36, 46)
+speedBox.BorderSizePixel = 0
+speedBox.Text = "28"
+speedBox.TextColor3 = Color3.fromRGB(255, 220, 110)
+speedBox.TextSize = 11
+speedBox.Font = Enum.Font.GothamBold
+speedBox.ClearTextOnFocus = false
+speedBox.ZIndex = 8
+speedBox.Parent = speedRow
+
+local spToggle = Instance.new("TextButton")
+spToggle.Size = UDim2.new(0, 44, 0, 26)
+spToggle.Position = UDim2.new(1, -50, 0.5, -13)
+spToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+spToggle.BorderSizePixel = 0
+spToggle.Text = "OFF"
+spToggle.TextColor3 = Color3.fromRGB(220, 220, 230)
+spToggle.TextSize = 10
+spToggle.Font = Enum.Font.GothamBold
+spToggle.ZIndex = 8
+spToggle.Parent = speedRow
+
+local function readSpeed()
+    local n = tonumber(speedBox.Text)
+    if n and n > 0 then
+        customWalkSpeed = math.clamp(n, 1, 250)
+    end
+end
+
+speedBox.FocusLost:Connect(readSpeed)
+spToggle.MouseButton1Click:Connect(function()
+    readSpeed()
+    walkSpeedActive = not walkSpeedActive
+    local _, hum = getCharNow()
+    if walkSpeedActive then
+        spToggle.BackgroundColor3 = Color3.fromRGB(255, 45, 45)
+        spToggle.Text = "ON"
+        if hum then hum.WalkSpeed = customWalkSpeed end
+    else
+        spToggle.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+        spToggle.Text = "OFF"
+        if hum then hum.WalkSpeed = 16 end
+    end
+end)
+
+local function makeToggleRow(title, orderNum, onToggle)
+    local row = Instance.new("Frame")
+    row.LayoutOrder = orderNum
+    row.Size = UDim2.new(1, 0, 0, 42)
+    row.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+    row.BorderSizePixel = 0
+    row.ZIndex = 7
+    row.Parent = scroll
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -68, 1, 0)
+    lbl.Position = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = title
+    lbl.TextColor3 = Color3.fromRGB(235, 235, 245)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 8
+    lbl.Parent = row
+
+    local sw = Instance.new("TextButton")
+    sw.Size = UDim2.new(0, 46, 0, 24)
+    sw.Position = UDim2.new(1, -54, 0.5, -12)
+    sw.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+    sw.BorderSizePixel = 0
+    sw.Text = "OFF"
+    sw.TextColor3 = Color3.fromRGB(235, 235, 245)
+    sw.TextSize = 9
+    sw.Font = Enum.Font.GothamBold
+    sw.ZIndex = 8
+    sw.Parent = row
+
+    local state = false
+    sw.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            sw.BackgroundColor3 = Color3.fromRGB(255, 45, 45)
+            sw.Text = "ON"
+        else
+            sw.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+            sw.Text = "OFF"
+        end
+        pcall(onToggle, state)
+    end)
+end
+
+-- 2. TÀNG HÌNH
+local invisibleEnabled = false
+local function applyInvis(active)
+    for _, part in ipairs(cachedParts) do
+        if part and part.Parent and part.Name ~= "HumanoidRootPart" then
+            local target = active and 1 or 0
+            if part.LocalTransparencyModifier ~= target then
+                part.LocalTransparencyModifier = target
+            end
+        end
+    end
+    for _, dec in ipairs(cachedDecals) do
+        if dec and dec.Parent then
+            local target = active and 1 or 0
+            if dec.Transparency ~= target then
+                dec.Transparency = target
+            end
+        end
+    end
+end
+
+makeToggleRow("Tàng Hình", 2, function(state)
+    invisibleEnabled = state
+    applyInvis(state)
+end)
+
+-- 3. XUYÊN TƯỜNG (KHÔNG RƠI XUỐNG LÒNG ĐẤT)
+local noclipEnabled = false
+local floorLockY = nil
+
+local function getGroundYBelow(pos)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    if cachedChar then
+        params.FilterDescendantsInstances = { cachedChar }
+    end
+    local hit = Workspace:Raycast(pos + Vector3.new(0, 2, 0), Vector3.new(0, -35, 0), params)
+    if hit then
+        return hit.Position.Y + 3.0
+    end
+    return nil
+end
+
+makeToggleRow("Xuyên Tường", 3, function(state)
+    noclipEnabled = state
+    floorLockY = nil
+    if state then
+        pcall(function()
+            local _, _, root = getCharNow()
+            if root then
+                floorLockY = getGroundYBelow(root.Position) or root.Position.Y
+            end
+        end)
+    else
+        pcall(function()
+            for _, p in ipairs(cachedParts) do
+                if p and p.Parent then
+                    p.CanCollide = true
+                end
+            end
+        end)
+    end
+end)
+
+-- 4. NHẢY VÔ HẠN
+local infJumpEnabled = false
+makeToggleRow("Nhảy Vô Hạn", 4, function(state)
+    infJumpEnabled = state
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled then
+        pcall(function()
+            local _, hum, root = getCharNow()
+            if hum and hum.Health > 0 then
+                if noclipEnabled and root then
+                    floorLockY = root.Position.Y + 4.5
+                end
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    end
+end)
+
+-- 5. ESP VIỀN ĐỎ NGƯỜI CHƠI
+local function applyRedOutlineEsp()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= localPlayer and plr.Character then
+            local hl = activeHighlights[plr]
+            if not hl or not hl.Parent then
+                hl = Instance.new("Highlight")
+                hl.Name = "PhatadrRedOutline"
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.FillColor = Color3.fromRGB(255, 35, 45)
+                hl.FillTransparency = 0.85
+                hl.OutlineColor = Color3.fromRGB(255, 35, 45)
+                hl.OutlineTransparency = 0
+                hl.Parent = espFolder
+                activeHighlights[plr] = hl
+            end
+            if hl.Adornee ~= plr.Character then
+                hl.Adornee = plr.Character
+            end
+        end
+    end
+
+    for plr, hl in pairs(activeHighlights) do
+        if not plr or not plr.Parent or not plr.Character or not plr.Character.Parent then
+            pcall(function()
+                if hl then hl:Destroy() end
+            end)
+            activeHighlights[plr] = nil
+        end
+    end
+end
+
+makeToggleRow("ESP Viền Đỏ", 5, function(state)
+    espEnabled = state
+    if state then
+        pcall(applyRedOutlineEsp)
+    else
+        clearAllEsp()
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    local hl = activeHighlights[plr]
+    if hl then
+        pcall(function() hl:Destroy() end)
+        activeHighlights[plr] = nil
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.4)
+        if espEnabled and screenGui.Parent then
+            pcall(applyRedOutlineEsp)
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if walkSpeedActive then
+        pcall(function()
+            local _, hum = getCharNow()
+            if hum and hum.WalkSpeed ~= customWalkSpeed then
+                hum.WalkSpeed = customWalkSpeed
+            end
+        end)
+    end
+    if invisibleEnabled then
+        pcall(applyInvis, true)
+    end
+    if noclipEnabled then
+        pcall(function()
+            local _, hum, root = getCharNow()
+            if not root then return end
+
+            for _, p in ipairs(cachedParts) do
+                if p and p.Parent then
+                    if p.Name == "LeftFoot" or p.Name == "RightFoot" or p.Name == "LeftLowerLeg" or p.Name == "RightLowerLeg" then
+                        p.CanCollide = true
+                    elseif p.CanCollide then
+                        p.CanCollide = false
+                    end
+                end
+            end
+
+            local detectedFloor = getGroundYBelow(root.Position)
+            if detectedFloor and (not floorLockY or detectedFloor > floorLockY - 2) then
+                floorLockY = detectedFloor
+            end
+
+            if floorLockY and root.Position.Y < floorLockY then
+                local vel = root.AssemblyLinearVelocity
+                if vel.Y < 0 then
+                    root.AssemblyLinearVelocity = Vector3.new(vel.X, 0, vel.Z)
+                end
+                root.CFrame = CFrame.new(root.Position.X, floorLockY, root.Position.Z) * root.CFrame.Rotation
+                if hum and hum:GetState() == Enum.HumanoidStateType.Freefall then
+                    hum:ChangeState(Enum.HumanoidStateType.Running)
+                end
+            end
+        end)
+    end
+end)
+
+print("Phatadr Universal Loaded")
